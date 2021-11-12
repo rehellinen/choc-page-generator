@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es2015",
+    "moduleResolution": "node",
+    "lib": ["es2017", "dom"],
+    "outDir": "dist",
+    "sourceMap": true,
+    "strict": true,
+    "noEmit": true,
+    "noImplicitAny": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": "./src",
+    "jsx": "react-jsx"
+  },
+  "include": ["./src/*.ts"]
+}
