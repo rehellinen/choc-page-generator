@@ -9,8 +9,10 @@
     "noEmit": true,
     "noImplicitAny": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": "./src",
+    "baseUrl": "./packages/page-generator/src",
     "jsx": "react-jsx"
   },
-  "include": ["./src/*.ts"]
+  "include": [
+    "./packages/page-generator/src/*.ts"
+  ]
 }
