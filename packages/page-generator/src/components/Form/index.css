@@ -1,0 +1,19 @@
+/* TODO: 思考更好的CSS注入方式 */
+.cancel-btn {
+  margin-left: 20px;
+}
+
+.form-btn {
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.max-width {
+  width: 100%;
+}
+
+/* form弹窗 */
+.form-modal .ant-modal-body {
+  max-height: 70vh;
+  overflow: auto;
+}
