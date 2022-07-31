@@ -4,3 +4,5 @@ import Module from "../modules/Module";
 export type LifeCycleFunction<
   T extends Module<any> = Module<any>
 > = (this: T, ...args: any[]) => void
+
+export type TableHookName = 'onChange' | 'mounted'
