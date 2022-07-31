@@ -1,63 +1,41 @@
-import { cloneDeep } from 'lodash'
-import Schema from '../core/Schema'
-import { isObject } from '../utils/utils'
+import {handleError} from '../utils/utils'
+import {LifeCycleFunction} from "../types";
 
-export default class Module {
-  id: string = ''
-  schema: any = {}
-  schemaIns: any = {}
-  initialOutput: any = {}
-  output: any = {}
+export default class Module<HOOK_NAME extends string> {
+  hooks: Record<string, LifeCycleFunction[]> = {}
+  config: any = {}
 
-  constructor(schema: any, schemaIns: Schema) {
-    this.schema = schema
-    this.schemaIns = schemaIns
-    this.id = schema.id
-  }
-
-  mounted() {}
-
-  getSchema() {
-    return this.schema
-  }
-
-  resetOutput() {
-    this.output = cloneDeep(this.initialOutput)
-    return this.output
-  }
-  getOutput(config: any = {}) {
-    const outputSchema = this.schema.output
-    if (config.origin || !outputSchema) {
-      return this.output
-    }
-    return this.getOutputByID(outputSchema)
-  }
-  setOutput(data: any) {
-    this.output = data
-  }
-
-  async getOutputByID(schema: any) {
-    if (!schema) {
-      return {}
-    }
-    if (schema.getOutputByID) {
-      return this.schemaIns.getOutputByID(schema.getOutputByID)
-    }
-    return schema
-  }
-
-  async callHook(name, config) {
-    const functions = this.schema[name]
-
-    if (Array.isArray(functions)) {
-      for (const func of functions) {
-        if (isObject(func)) {
-          if (func.pendingRequest) {
-            // eslint-disable-next-line no-await-in-loop
-            await this.schemaIns.getOutputByID(func.pendingRequest, config)
-          }
-        }
+  initHooks(hookNames: HOOK_NAME[]) {
+    hookNames.forEach((hookName) => {
+      if (this.config[hookName]) {
+        this.addHook(hookName, this.config[hookName])
       }
+    })
+  }
+
+  addHook(hookName: HOOK_NAME, func: LifeCycleFunction | LifeCycleFunction[]) {
+    if (!Array.isArray(func)) {
+      func = [func]
+    }
+
+    if (!this.hooks[hookName]) {
+      this.hooks[hookName] = func
+    } else {
+      this.hooks[hookName].push(...func)
+    }
+  }
+
+  async callHook(hookName: HOOK_NAME) {
+    if (!this.hooks[hookName]) {
+      return
+    }
+
+    try {
+      for (const hook of this.hooks[hookName]) {
+        await hook.apply(this)
+      }
+    } catch (e) {
+      handleError(e)
     }
   }
 }
