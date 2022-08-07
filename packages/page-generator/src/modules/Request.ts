@@ -1,110 +1,81 @@
-import { Repository } from '~/src/plugins/repository'
-import Module from '~/src/components/PageGenerator/modules/Module'
+import {proxy} from "valtio";
+import axios from "axios";
+import { isEqual } from "lodash";
+import Module from "./Module";
+import {RequestConfig} from "../types/schema";
+import {RequestStore} from "../types/store";
+import {RequestHookName} from "../types";
+import {handleError} from "../utils/utils";
 
-enum NormalErrorCode {
-  SUCCESS = 0,
-  ERROR = 1,
-  ERROR_PARAMS = 2,
-  ERROR_AUTH = 3,
-  ERROR_SESSION = 4,
-  ERROR_SERVER = 5,
-  ERROR_NO_DATA = 6,
-  ERROR_FORBID = 7,
-  ERROR_DATA_EXIST = 8,
-  ERROR_DATA_LIMIT = 9,
-  ERROR_QUOTA_LIMIT = 10,
-  ERROR_MAINTENANCE = 11,
 
-  ERROR_REF_ID_EXISTS = 10003, // partner_id and partner_txn_id exists
-  ERROR_INVALID_CHECKSUM = 10004, // deprecated, no checksum required in grpc
-  ERROR_ACCOUNT_NO_INVALID = 10005, // bank account no format error
-  ERROR_AMOUNT_INVALID = 10006, // amount too large or over limit
-  ERROR_EMAIL_INVALID = 10007, // email pass basic validation, but invalid
+export class Request<
+  ID extends string,
+  REQ extends object = {},
+  RES extends object = {}
+> extends Module<RequestHookName> {
+  config: RequestConfig<ID, REQ, RES>
+  store: RequestStore<REQ, RES>
 
-  // is_error_code_config error type
-  ERROR_CODE_CHANNEL_API_EXIST_ERROR = 100, // channel api are existing in ErrorCode Mapping Config
-  ERROR_CODE_ERROR_KEY_EXIST_ERROR = 101, // is error key existed error
-  ERROR_CODE_MAPPING_EXIST_ERROR = 102, // is error code mapping existed error
-  ERROR_CODE_PENDING_APPROVE_ERROR = 103, // The same record exists pending approval
-  ERROR_CODE_SYSTEM_ERROR = 104, // is error code config system error or other unknown error
-  ERROR_CODE_STATUS_CODE_EXIST_ERROR = 105, // is status + error code existed error
-  ERROR_CODE_ERROR_KEY_CONFLICT_ERROR = 106 // is code + error key conflict error
-}
-enum GiroErrorCode {
-  SUCCESS = '00'
-}
-enum BankTopUpErrorCode {
-  SUCCESS = '0'
-}
-// NORMAL处理的返回格式 -> { result_code: 0, result_message: '' }
-// HEADER处理的返回格式 -> { header: { errcode: 0, errmsg: '' } }
-// GIRO处理的返回格式 -> { error_code: 0, message: '' }
-export enum ResponseType {
-  NORMAL = 1,
-  HEADER = 2,
-  GIRO = 3,
-  BANK_TOP_UP = 4
-}
+  constructor(config: RequestConfig<ID, REQ, RES>) {
+    super()
 
-interface NormalResponse {
-  result_code: NormalErrorCode
-  result_message?: string
-  result_msg?: string
-}
-interface HeaderResponse {
-  header: {
-    errcode: NormalErrorCode
-    errmsg: string
+    this.config = proxy({
+      ...config
+    })
+    this.store = proxy({
+      cachedRequestData: undefined,
+      response: undefined,
+      isLoading: false,
+      pendingCount: 0,
+    })
+    this.initHooks(['onLoadingChanged', 'onCompleted'])
   }
-}
-interface GiroResponse {
-  error_code: GiroErrorCode
-  message: string
-}
-interface BankTopUpResponse {
-  error_code: BankTopUpErrorCode
-  message: string
-}
-interface RequestConfig {
-  responseType?: ResponseType
-}
 
-export class Request extends Module {
-  async request(repository, method, params, { responseType }: RequestConfig = {}) {
-    const res = await Repository[repository].post(method, params)
+  setLoading(isLoading: boolean) {
+    this.store.isLoading = isLoading
+    this.callHook('onLoadingChanged')
+  }
 
-    if (responseType == null || responseType === ResponseType.NORMAL) {
-      if (Number((res as NormalResponse).result_code) !== NormalErrorCode.SUCCESS) {
-        throw new Error(
-          (res as NormalResponse).result_message || (res as NormalResponse).result_msg
-        )
+  async refetch() {
+    return this.fetch(this.store.cachedRequestData, {
+      isRefetch: true
+    })
+  }
+
+  async fetch(data?: REQ, config?: { isRefetch: boolean }) {
+    try {
+      const { isRefetch } = config ?? {}
+
+      if (isRefetch) {
+        data = this.store.cachedRequestData
       }
-    } else if (responseType === ResponseType.HEADER) {
-      if (Number((res as HeaderResponse).header.errcode) !== NormalErrorCode.SUCCESS) {
-        throw new Error((res as HeaderResponse).header.errmsg)
+      if (!isRefetch && isEqual(data, this.store.cachedRequestData)) {
+        return this.store.response
       }
-    } else if (responseType === ResponseType.GIRO) {
-      if (String((res as GiroResponse).error_code) !== GiroErrorCode.SUCCESS) {
-        throw new Error((res as GiroResponse).message)
-      }
-    } else if (responseType === ResponseType.BANK_TOP_UP) {
-      if (String((res as BankTopUpResponse).error_code) !== BankTopUpErrorCode.SUCCESS) {
-        throw new Error((res as GiroResponse).message)
+
+      this.store.cachedRequestData = data
+      this.store.pendingCount++
+      this.setLoading(true)
+
+      const res = await axios({
+        data,
+        method: this.config.method,
+        url: this.config.url,
+      })
+
+      this.store.response = res.data
+      this.callHook('onCompleted')
+    } catch (e) {
+      handleError(e as Error)
+    } finally {
+      this.store.pendingCount--
+
+      if (this.store.pendingCount === 0) {
+        this.setLoading(false)
       }
     }
-
-    return res
   }
 
-  // 对于Request类，this.output保存的是未经map处理的数据
-  async pendingRequest(config: any = {}) {
-    const { repository, method, params, responseType } = Object.assign({}, this.schema, config)
-
-    this.output = await this.request(repository, method, params, {
-      responseType
-    })
-    return this.schema.output || this.output
-  }
 }
 
 export default Request
