@@ -46,44 +46,36 @@ export type ModuleType = 'request' | 'table'
 // 根据传入的type筛选出对应的Module
 type GetModulesByType<CONFIG extends ModuleConfig, TYPE extends ModuleType> =
   CONFIG extends [infer FIRST, ...infer OTHERS]
-    ? FIRST extends [infer ID, TYPE] | [infer ID, TYPE, any] | [infer ID, TYPE, any, any]
-      ? OTHERS extends ModuleConfig
+    ? OTHERS extends ModuleConfig
+      ? FIRST extends [infer ID, TYPE] | [infer ID, TYPE, any] | [infer ID, TYPE, any, any]
         ? [FIRST, ...GetModulesByType<OTHERS, TYPE>]
-        : [FIRST]
-      : OTHERS extends ModuleConfig
-        ? [...GetModulesByType<OTHERS, TYPE>]
         : []
+      : []
     : []
 
 // 获取所有模块的ID
-type GetModuleIDs<CONFIG extends ModuleConfig> =
+export type GetModuleIDs<CONFIG extends ModuleConfig> =
   CONFIG extends [infer FIRST, ...infer OTHERS]
-    ? FIRST extends [infer ID, any] | [infer ID, any, any] | [infer ID, any, any, any]
-      ? OTHERS extends ModuleConfig
+    ? OTHERS extends ModuleConfig
+      ? FIRST extends [infer ID, any] | [infer ID, any, any] | [infer ID, any, any, any]
         ? [ID, ...GetModuleIDs<OTHERS>]
-        : [ID]
-      : OTHERS extends ModuleConfig
-        ? [...GetModuleIDs<OTHERS>]
         : []
+    : []
   : []
 
 // 将Module转为Config
 type ModuleToConfig<CONFIG extends ModuleConfig> =
   CONFIG extends [infer FIRST, ...infer OTHERS]
     ? FIRST extends [infer ID, infer TYPE] | [infer ID, infer TYPE, infer PARAM1] | [infer ID, infer TYPE, infer PARAM1, infer PARAM2]
-      ? ID extends string
-        ? TYPE extends ModuleType ?
-          PARAM1 extends object
-            ? PARAM2 extends object
-              ? OTHERS extends ModuleConfig
+      ? OTHERS extends ModuleConfig
+        ? ID extends string
+          ? TYPE extends ModuleType ?
+            PARAM1 extends object
+              ? PARAM2 extends object
                 ? [ConfigMap<ID, PARAM1, PARAM2>[TYPE], ...ModuleToConfig<OTHERS>]
-                : [ConfigMap<ID, PARAM1, PARAM2>[TYPE]]
-              : OTHERS extends ModuleConfig
-                ? [ConfigMap<ID, PARAM1, {}>[TYPE], ...ModuleToConfig<OTHERS>]
-                : [ConfigMap<ID, PARAM1, {}>[TYPE]]
-            : OTHERS extends ModuleConfig
-              ? [ConfigMap<ID, {}, {}>[TYPE], ...ModuleToConfig<OTHERS>]
-              : [ConfigMap<ID, {}, {}>[TYPE]]
+                : [ConfigMap<ID, PARAM1, {}>[TYPE], ...ModuleToConfig<OTHERS>]
+              : [ConfigMap<ID, {}, {}>[TYPE], ...ModuleToConfig<OTHERS>]
+            : []
           : []
         : []
       : []

@@ -7,7 +7,3 @@ export type LifeCycleFunction<
 > = (this: T, ...args: any[]) => void
 
 export type TableHookName = 'onChange' | 'mounted'
-
-export type ModuleMap = {
-  'table': TableModule<any>
-}
