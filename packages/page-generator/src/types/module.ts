@@ -3,11 +3,11 @@ import Request from "../modules/Request";
 import {ModuleConfig, ModuleType} from "./schema";
 import {AppendToObject} from "./utils";
 
-export type Module = (Table<any> | Request)
+export type Module = (Table<any> | Request<any>)
 
 export type ModuleTypeMap<ID extends string, PARAM1 extends object, PARAM2 extends object> = {
   'table': Table<ID, PARAM1>
-  'request': Request
+  'request': Request<ID, PARAM1, PARAM2>
 }
 
 export type ModuleMap<CONFIG extends ModuleConfig> =
