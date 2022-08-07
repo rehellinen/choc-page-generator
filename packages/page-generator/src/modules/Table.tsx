@@ -3,7 +3,7 @@ import {proxy, useSnapshot} from "valtio";
 import React, {useEffect} from "react";
 import Module from './Module'
 import {TableHookName} from "../types";
-import {TableConfig} from "../types/modules";
+import {TableConfig} from "../types/schema";
 import {TableStore} from "../types/store";
 
 const defaultConfig: {
